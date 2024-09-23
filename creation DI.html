@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      /* Dalkia-inspired CSS */
+
+      /* Main colors based on the logo */
+      :root {
+        --dalkia-blue: #003f87;
+        --dalkia-orange: #f26522;
+        --dalkia-light-blue: #0072bb;
+        --dalkia-white: #ffffff;
+      }
+
+      /* General styles */
+      body {
+        font-family: Arial, sans-serif;
+        background-color: var(--dalkia-light-blue);
+        color: var(--dalkia-white);
+        margin: 0;
+        padding: 0;
+      }
+
+      header {
+        background-color: var(--dalkia-blue);
+        padding: 20px;
+        text-align: center;
+      }
+
+      header img {
+        width: 150px; /* Adjust the size of the logo */
+      }
+
+      header h1 {
+        color: var(--dalkia-orange);
+        font-size: 2.5em;
+        margin: 0;
+      }
+
+      /* Buttons */
+      button {
+        background-color: var(--dalkia-orange);
+        color: var(--dalkia-white);
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 1em;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: var(--dalkia-blue);
+      }
+
+      /* Links */
+      a {
+        color: var(--dalkia-white);
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      a:hover {
+        color: var(--dalkia-orange);
+      }
+
+      /* Form styling */
+      input[type="text"], textarea {
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0;
+        border: 1px solid var(--dalkia-blue);
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+
+      /* Container */
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: var(--dalkia-white);
+        border-radius: 10px;
+        color: var(--dalkia-blue);
+      }
+
+      /* Footer */
+      footer {
+        background-color: var(--dalkia-blue);
+        color: var(--dalkia-white);
+        padding: 10px;
+        text-align: center;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+      }
+
+      footer p {
+        margin: 0;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        header h1 {
+          font-size: 2em;
+        }
+
+        .container {
+          padding: 15px;
+        }
+      }
+
+    /* Style pour l'icône de chargement (spinner) */
+    .loader {
+      border: 2px solid #f3f3f3; /* Light grey */
+      border-top: 2px solid #3498db; /* Blue */
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    </style>
+    <script>
+
+     // Utiliser la variable GUID passée depuis Google Apps Script code.GS
+      var GUID = '<?!= guid ?>';
+      //Récuperation de notre GUID
+      var extractedGUID = GUID.match(/GUID=([\w-]+)/)[1];
+
+      // Fonction pour générer un UUID aléatoire
+      function generateUUID() {
+        return crypto.randomUUID();
+      }
+
+            const labelMapping = {
+            equipmentId: 'Équipement',
+            requestorId: 'Demandeur',
+            localisation: 'Localisation',
+            ActivitytypeId : "Type d'activité",
+            workTeamId: 'Equipe',
+            operatorId: 'Operateur',
+            taskId: 'Tâche',
+            domainId: 'Domaine'
+            };
+      // Fonction pour obtenir un token d'authentification
+      function getToken() {
+        const clientId = 'ApiBIM01';
+        const clientSecret = 'c774a000dd846769e54dcd121349cb61929c848b';
+        const tokenUrl = 'https://api01.samfm.net/if/OAuth/OAuth/Token';
+        const data = {
+          grant_type: 'client_credentials',
+          client_id: clientId,
+          client_secret: clientSecret
+        };
+
+        return fetch(tokenUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams(data)
+        })
+        .then(response => response.json())
+        .then(tokenResponse => tokenResponse.access_token)
+        .catch(error => {
+          alert('Erreur lors de la génération du token : ' + error);
+        });
+      }
+
+      // Fonction pour poster les données JSON vers l'endpoint avec le token et le UUID dans les en-têtes
+      function postJson(token, jsonData, uuid) {
+        const endpointUrl = 'https://api01.samfm.net/if/OrchestrationApi/api/operations';
+
+        return fetch(endpointUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+            'X-FailOverID': uuid  // Ajout du UUID dans le header
+          },
+          body: JSON.stringify(jsonData)
+        })
+        .then(response => response.json())
+        .catch(error => {
+          alert('Erreur lors de la requête POST : ' + error);
+        });
+      }
+
+      function onSuccess(data) {
+
+        let formContainer = document.getElementById('formContainer');
+        formContainer.innerHTML = '';
+
+        // Champs autocomplétion basés sur Google Sheets
+        Object.keys(data).forEach(sheetName => {
+
+          let fieldset = document.createElement('fieldset');
+          let legend = document.createElement('legend');
+          
+          // Utilisez le mapping pour obtenir un label lisible
+           // Si aucun mapping, on garde le nom original depuis notre sheet
+          let readableLabel = labelMapping[sheetName] || sheetName;
+          
+          // Utilisation du label personnalisé depuis notre mapping
+          legend.textContent = readableLabel; 
+          fieldset.appendChild(legend);
+
+    
+          let input = document.createElement('input');
+          input.setAttribute('type', 'text');
+          input.setAttribute('id', sheetName);
+          input.setAttribute('placeholder', 'Rechercher...');
+          input.setAttribute('autocomplete', 'off');
+          
+          fieldset.appendChild(input);
+          
+
+          // Barre de recherche avec autocomplétion
+          let autocompleteContainer = document.createElement('div');
+          autocompleteContainer.setAttribute('class', 'autocomplete-items');
+          fieldset.appendChild(autocompleteContainer);
+
+          input.addEventListener('input', function() {
+            let value = this.value;
+            autocompleteContainer.innerHTML = ''; // Clear previous results
+            
+            if (!value) return false;
+
+            data[sheetName].forEach(item => {
+              if (item.value.toLowerCase().includes(value.toLowerCase())) {
+                let option = document.createElement('div');
+                option.textContent = item.value;
+                option.setAttribute('data-id', item.id);
+                
+                option.addEventListener('click', function() {
+                  input.value = item.value; // Set input value to the clicked item
+                  input.setAttribute('data-id', item.id); // Store the selected ID
+                  autocompleteContainer.innerHTML = ''; // Clear the results
+                });
+
+                autocompleteContainer.appendChild(option);
+              }
+            });
+          });
+
+          formContainer.appendChild(fieldset);
+        });
+
+        // Ajout des champs supplémentaires
+        addTextField('Libellé', 'label');
+        addTextField('Détail', 'detail');
+        addTextField('Commentaire', 'comment');
+      }
+
+      // Fonction pour ajouter des champs texte supplémentaires
+      function addTextField(labelText, fieldName) {
+        let formContainer = document.getElementById('formContainer');
+        let fieldset = document.createElement('fieldset');
+        let label = document.createElement('label');
+        label.setAttribute('for', fieldName);
+        label.textContent = labelText;
+
+        let input = document.createElement('input');
+        input.setAttribute('type', 'text');
+        input.setAttribute('id', fieldName);
+        input.setAttribute('name', fieldName);
+        input.setAttribute('placeholder', 'Entrez ' + labelText);
+
+        fieldset.appendChild(label);
+        fieldset.appendChild(input);
+        formContainer.appendChild(fieldset);
+      }
+
+      function submitForm() {
+
+        const submitButton = document.getElementById('submitButton');
+
+        // Afficher le loader
+        submitButton.innerHTML = 'Soumettre la demande <span class="loader"></span>';
+        submitButton.disabled = true; // Désactiver le bouton pendant le traitement
+
+
+        // Générer le JSON avec les données du formulaire
+        let formData = {};
+        let inputs = document.querySelectorAll('input[type="text"]');
+
+        inputs.forEach(input => {
+          let id = input.getAttribute('data-id');
+          formData[input.id] = id ? id : input.value; // Store the ID (if available) or the value
+        });
+
+        // Générer un UUID et l'utiliser dans le header de la requête
+        let uuid = generateUUID();
+
+        // Obtenir le token, poster les données avec le UUID dans le header, et afficher la réponse
+        getToken().then(token => {
+
+            // Site Id par defaut .
+          formData.siteId = 209;
+           formData.GUID =  extractedGUID;
+            console.log('voici notre form  data :  ', formData);
+            postJson(token, formData, uuid)
+                .then(response => {
+                  // ToDo : Mettre une modal de succces des requette et mettre la response en console. log  . 
+                    alert("Réponse du serveur :\n" + JSON.stringify(response, null, 2));
+                })
+                .finally(() => {
+                    // Restaurer le bouton
+                    submitButton.innerHTML = 'Soumettre la demande';
+                    submitButton.disabled = false; // Réactiver le bouton
+                });
+        }).catch(error => {
+            console.error('Erreur lors de l\'obtention du token :', error);
+            // Restaurer le bouton en cas d'erreur
+            submitButton.innerHTML = 'Soumettre la demande';
+            submitButton.disabled = false; // Réactiver le bouton
+        });
+
+      }
+
+      function loadForm() {
+        google.script.run.withSuccessHandler(onSuccess).getSheetData();
+      }
+
+      window.onload = loadForm;
+    </script>
+  </head>
+  <body>
+    <header>
+      <!-- Logo de Dalkia -->
+
+      <h1>Demandes d'Intervention</h1>
+      
+    </header>
+
+    <div class="container">
+      <div id="formContainer"></div>
+   
+      <!-- Remplacement du texte du bouton -->
+      <button id="submitButton" onclick="submitForm()">Soumettre la demande</button>
+    </div>
+
+
+  </body>
+</html>

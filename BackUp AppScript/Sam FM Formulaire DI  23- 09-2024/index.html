@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Protest+Guerrilla&display=swap" rel="stylesheet">
+
+    <style>
+      /* Dalkia-inspired CSS */
+
+      /* Main colors based on the logo */
+      :root {
+        --dalkia-blue: #003f87;
+        --dalkia-orange: #f26522;
+        --dalkia-light-blue: #0072bb;
+        --dalkia-white: #ffffff;
+      }
+
+      /* General styles */
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f3f4e2;
+        color: var(--dalkia-white);
+        margin: 0;
+        padding: 0;
+      }
+
+      header {
+        background-color: #f3f4e2;
+        text-align: center;
+        margin: 25px;
+      }
+
+      header img {
+        width: 150px; /* Adjust the size of the logo */
+      }
+
+      header h1 {
+        color: var(--dalkia-orange);
+        font-size: 2em;
+        margin: 0;
+        font-family: "Protest Guerrilla", sans-serif;
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      /* Buttons */
+      button {
+        background-color: var(--dalkia-orange);
+        color: var(--dalkia-white);
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 1em;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: var(--dalkia-blue);
+      }
+
+      /* Links */
+      a {
+        color: var(--dalkia-white);
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      a:hover {
+        color: var(--dalkia-orange);
+      }
+
+      /* Form styling */
+      input[type="text"], textarea {
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0;
+        border: 1px solid var(--dalkia-blue);
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+
+      /* Container */
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: var(--dalkia-white);
+        border-radius: 20px;
+        color: var(--dalkia-blue);
+      }
+
+      fieldset {
+        border: 0;
+      }
+
+      /* Footer */
+      footer {
+        background-color: var(--dalkia-blue);
+        color: var(--dalkia-white);
+        padding: 10px;
+        text-align: center;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+      }
+
+      footer p {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #submitButtonContainer {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #formLoaderAnimContainer {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px:
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        header h1 {
+          font-size: 2.75em;
+        }
+
+        .container {
+          padding: 15px;
+        }
+      }
+
+    /* Style pour l'icône de chargement (spinner) */
+    .loader {
+      border: 2px solid #f3f3f3; /* Light grey */
+      border-top: 2px solid #3498db; /* Blue */
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    </style>
+    <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+    <script>
+
+     // Utiliser la variable GUID passée depuis Google Apps Script code.GS
+      var GUID = '<?!= guid ?>';
+      //Récuperation de notre GUID
+      var extractedGUID = GUID.match(/GUID=([\w-]+)/)[1];
+
+      var codeGMAO = ""
+
+      // Fonction pour générer un UUID aléatoire
+      function generateUUID() {
+        return crypto.randomUUID();
+      }
+
+      const labelMapping = {
+        equipmentId: {
+          name: 'Équipement',
+          disabled: false
+        },
+        requestorId: {
+          name:'Demandeur',
+          disabled: false
+        },
+        localisation: {
+          name: 'Localisation',
+          disabled: true
+        },
+        ActivitytypeId : {
+          name:"Type d'activité",
+          disabled: false
+        },
+        workTeamId: {
+          name: 'Equipe',
+          disabled: false
+        },
+        operatorId: {
+          name: 'Operateur',
+          disabled: false
+        },
+        taskId: {
+          name: 'Tâche',
+          disabled: false
+        },
+        domainId: {
+          name:'Domaine',
+          disabled: false
+        },
+      };
+
+      const excludedSheetNames = [
+        "Mapping GMAO_IFC",
+        "Mapping_localisation_GMAO_IFC",
+        "buildingId"
+      ]
+
+      // Fonction pour obtenir un token d'authentification
+      function getToken() {
+        const clientId = 'ApiBIM01';
+        const clientSecret = 'c774a000dd846769e54dcd121349cb61929c848b';
+        const tokenUrl = 'https://api01.samfm.net/if/OAuth/OAuth/Token';
+        const data = {
+          grant_type: 'client_credentials',
+          client_id: clientId,
+          client_secret: clientSecret
+        };
+
+        return fetch(tokenUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams(data)
+        })
+        .then(response => response.json())
+        .then(tokenResponse => tokenResponse.access_token)
+        .catch(error => {
+          alert('Erreur lors de la génération du token : ' + error);
+        });
+      }
+
+      // Fonction pour poster les données JSON vers l'endpoint avec le token et le UUID dans les en-têtes
+      function postJson(token, jsonData, uuid) {
+        const endpointUrl = 'https://api01.samfm.net/if/OrchestrationApi/api/operations';
+
+        return fetch(endpointUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+            'X-FailOverID': uuid  // Ajout du UUID dans le header
+          },
+          body: JSON.stringify(jsonData)
+        })
+        .then(response => response.json())
+        .catch(error => {
+          alert('Erreur lors de la requête POST : ' + error);
+        });
+      }
+
+      function mapSheetNameToField(sheetName, data) {
+        let fieldset = document.createElement('fieldset');
+        let legend = document.createElement('legend');
+        
+        // Utilisez le mapping pour obtenir un label lisible
+          // Si aucun mapping, on garde le nom original depuis notre sheet
+        let readableLabel = labelMapping[sheetName].name || sheetName;
+        
+        // Utilisation du label personnalisé depuis notre mapping
+        legend.textContent = readableLabel; 
+        fieldset.appendChild(legend);
+
+  
+        let input = document.createElement('input');
+        input.setAttribute('type', 'text');
+        input.setAttribute('id', sheetName);
+        input.setAttribute('placeholder', 'Rechercher...');
+        input.setAttribute('autocomplete', 'off');
+
+        
+        fieldset.appendChild(input);
+        
+        if(labelMapping[sheetName].disabled === true) {
+          
+          if(sheetName === "localisation") {
+            const selectedObjectLocation = data[sheetName].find(obj => obj.ifcGUID === extractedGUID);
+
+            codeGMAO = selectedObjectLocation.value || "";
+            
+            // Remplissage automatique de la valeur
+            input.value = selectedObjectLocation?.libelleGMAO || "Non trouvé";
+            input.setAttribute('data-id', selectedObjectLocation?.id);
+          }
+
+          input.setAttribute('disabled',  "true" );
+        } else {      
+          // Barre de recherche avec autocomplétion
+          let autocompleteContainer = document.createElement('div');
+          autocompleteContainer.setAttribute('class', 'autocomplete-items');
+          fieldset.appendChild(autocompleteContainer);
+
+          
+          input.addEventListener('input', function() {
+            let value = this.value;
+            autocompleteContainer.innerHTML = ''; // Clear previous results
+            
+            if (!value) return false;
+
+            if(sheetName === "equipmentId") {
+              const selectedObjectLocation = data["localisation"]?.find(obj => obj.ifcGUID === extractedGUID);
+              console.log("Location : ",selectedObjectLocation)
+
+
+              codeGMAO = selectedObjectLocation?.value || "";
+              console.log("Code GMAO : ", codeGMAO)
+
+              console.log("Mappig GMAO_IFC : ", data["Mapping GMAO_IFC"])
+
+              const filteredData = data["Mapping GMAO_IFC"]?.filter(obj => obj?.codeLocalGMAO === codeGMAO) || data[sheetName];
+              
+              console.log("Donnée filtré :>> ", filteredData)
+
+              filteredData?.forEach(item => {
+                if (item.value.toLowerCase().includes(value.toLowerCase())) {
+                  let option = document.createElement('div');
+                  option.textContent = item.value;
+                  option.setAttribute('data-id', item.id);
+                  
+                  option.addEventListener('click', function() {
+                    input.value = item.value; // Set input value to the clicked item
+                    input.setAttribute('data-id', item.id); // Store the selected ID
+                    autocompleteContainer.innerHTML = ''; // Clear the results
+                  });
+
+                  autocompleteContainer.appendChild(option);
+                }
+              });
+            } else {
+              data[sheetName].forEach(item => {
+              if (item.value.toLowerCase().includes(value.toLowerCase())) {
+                let option = document.createElement('div');
+                option.textContent = item.value;
+                option.setAttribute('data-id', item.id);
+                
+                option.addEventListener('click', function() {
+                  input.value = item.value; // Set input value to the clicked item
+                  input.setAttribute('data-id', item.id); // Store the selected ID
+                  autocompleteContainer.innerHTML = ''; // Clear the results
+                });
+
+                autocompleteContainer.appendChild(option);
+              }
+            });
+            }
+            
+          });
+        }
+
+
+        formContainer.appendChild(fieldset);
+      }
+
+      function onSuccess(data) {
+
+        let formContainer = document.getElementById('formContainer');
+        formContainer.innerHTML = '';
+
+        addTextField('Objet', 'detail');
+        addTextField('Libellé', 'label');
+
+        const mergedData = data.reduce((acc, curr) => {
+          return { ...acc, ...curr };
+        }, {});
+
+        // Champs autocomplétion basés sur Google Sheets
+        data?.map(elem => {
+          const sheetName = Object.keys(elem)[0];
+
+          // Verification si la feuille de calcul est parmis ceux qui seront exclu des champs input à créer
+          if(!excludedSheetNames.includes(sheetName)) mapSheetNameToField(sheetName, mergedData)
+          
+        });
+
+        // Ajout des champs supplémentaires
+       
+        addTextAreaField('Commentaire', 'comment');
+
+
+        const submitButtonContainer = document.getElementById('submitButtonContainer');
+
+        // Create the button element
+        const button = document.createElement('button');
+
+        // Set the button's attributes and text content
+        button.id = 'submitButton';
+        button.textContent = 'Soumettre la demande';
+        button.onclick = function() {
+            submitForm();
+        };
+
+        // Append the button to the container
+        submitButtonContainer.appendChild(button);
+      }
+
+      // Fonction pour ajouter des champs texte supplémentaires
+      function addTextField(labelText, fieldName) {
+        let formContainer = document.getElementById('formContainer');
+        let fieldset = document.createElement('fieldset');
+        let label = document.createElement('label');
+        label.setAttribute('for', fieldName);
+        label.textContent = labelText;
+
+        let input = document.createElement('input');
+        input.setAttribute('type', 'text');
+        input.setAttribute('id', fieldName);
+        input.setAttribute('name', fieldName);
+        input.setAttribute('placeholder', 'Entrez ' + labelText);
+
+        fieldset.appendChild(label);
+        fieldset.appendChild(input);
+        formContainer.appendChild(fieldset);
+      }
+
+      function addTextAreaField(labelText, fieldName) {
+        let formContainer = document.getElementById('formContainer');
+        
+        let fieldset = document.createElement('fieldset');
+        
+        let label = document.createElement('label');
+        label.setAttribute('for', fieldName);
+        label.textContent = labelText;
+
+        let textarea = document.createElement('textarea');
+        textarea.setAttribute('id', fieldName);
+        textarea.setAttribute('name', fieldName);
+        textarea.setAttribute('placeholder', 'Entrez ' + labelText);
+        textarea.setAttribute('rows', '4');  // Set at least 4 visible lines
+
+        fieldset.appendChild(label);
+        fieldset.appendChild(textarea);
+        
+        formContainer.appendChild(fieldset);
+    }
+
+
+      function submitForm() {
+
+        const submitButton = document.getElementById('submitButton');
+
+        // Afficher le loader
+        submitButton.innerHTML = 'Soumettre la demande <span class="loader"></span>';
+        submitButton.disabled = true; // Désactiver le bouton pendant le traitement
+
+
+        // Générer le JSON avec les données du formulaire
+        let formData = {};
+        let inputs = document.querySelectorAll('input[type="text"]');
+
+        inputs.forEach(input => {
+          let id = input.getAttribute('data-id');
+          formData[input.id] = id ? id : input.value; // Store the ID (if available) or the value
+        });
+
+        // Générer un UUID et l'utiliser dans le header de la requête
+        let uuid = generateUUID();
+
+        // Obtenir le token, poster les données avec le UUID dans le header, et afficher la réponse
+        getToken().then(token => {
+
+            // Site Id par defaut .
+          formData.siteId = 209;
+           formData.GUID =  extractedGUID;
+            console.log('voici notre form  data :  ', formData);
+            postJson(token, formData, uuid)
+                .then(response => {
+                  // ToDo : Mettre une modal de succces des requette et mettre la response en console. log  . 
+                    alert("Réponse du serveur :\n" + JSON.stringify(response, null, 2));
+                })
+                .finally(() => {
+                    // Restaurer le bouton
+                    submitButton.innerHTML = 'Soumettre la demande';
+                    submitButton.disabled = false; // Réactiver le bouton
+                });
+        }).catch(error => {
+            console.error('Erreur lors de l\'obtention du token :', error);
+            // Restaurer le bouton en cas d'erreur
+            submitButton.innerHTML = 'Soumettre la demande';
+            submitButton.disabled = false; // Réactiver le bouton
+        });
+
+      }
+
+      function loadForm() {
+        google.script.run.withSuccessHandler(onSuccess).getSheetData();
+      }
+
+      window.onload = loadForm;
+    </script>
+  </head>
+  <body>
+    <header>
+      <img alt="logo dalkia.fr" width="250px" height="150px" src="https://www.dalkia.fr/sites/default/files/2021-08/dalkia.svg" />
+
+      <h1>Formulaire de Demande d'Intervention</h1>
+      
+    </header>
+
+    <div class="container">
+      <div id="formContainer">
+        <div id="formLoaderAnimContainer"> 
+          <dotlottie-player src="https://lottie.host/1a011b7d-e3a9-4628-bfd5-4642acf60d97/W8RpWFTpDq.json" background="transparent" speed="1" style="width: 300px; height: 300px;" loop autoplay></dotlottie-player>
+          Veuillez patienter...
+        </div>
+      </div>
+   
+      <!-- Remplacement du texte du bouton -->
+      <div id="submitButtonContainer">  
+        
+      </div>
+    </div>
+
+
+  </body>
+</html>
